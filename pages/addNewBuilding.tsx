@@ -145,7 +145,7 @@ export const AddNewBuildingPage: React.FC<AddNewBuildingPageProps> = ({ setPage 
               <img
                 src={previewUrl}
                 alt="Preview"
-                className="max-w-full h-auto rounded-lg shadow-md border border-gray-300"
+                className="max-w-full h-auto rounded-xl shadow-md border border-gray-300"
               />
             </div>
           )}
