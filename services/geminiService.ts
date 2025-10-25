@@ -1,7 +1,6 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { SOURCE_URLS } from '../constants';
-import { BuildingData, AnalysisResult } from '../types';
+import { BuildingData, AnalysisResult, LocationAnalysis } from '../types';
 
 // It is assumed that process.env.API_KEY is available in the execution environment.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -42,27 +41,18 @@ export const generateResponse = async (userPrompt: string): Promise<string> => {
   }
 };
 
-export const analyzeSustainability = async (buildingData: BuildingData): Promise<AnalysisResult> => {
+export const analyzeLocation = async (region: BuildingData['locationRegion']): Promise<LocationAnalysis> => {
     const prompt = `
-      Analyze the sustainability of the following building concept based on the principles of sustainable architecture (like LEED, Passive House, etc.).
-      Provide a sustainability score from 0 to 100, where 100 is perfectly sustainable.
-      List the key pros and cons regarding sustainability.
-      Provide at least 3 actionable suggestions for improvement.
-      Write a brief summary of the analysis.
+      Analyze the specified US region for a sustainable building project.
+      Consider general weather conditions (hot/cold, humidity, sun exposure), climate risks (flooding, high winds), water availability, and typical proximity to public transportation hubs.
+      Provide a brief weather summary.
+      Suggest at least 3 key sustainability measures to prioritize for this region (e.g., solar panels in sunny areas, flood resilience in coastal areas).
+      Provide a note on integrating with local public transport.
 
-      Building Data:
-      - Purpose: ${buildingData.purpose}
-      - Location: ${buildingData.location}
-      - Floors: ${buildingData.floors}
-      - Total Area (sq ft): ${buildingData.area}
-      - Primary Materials: ${buildingData.materials}
-      - Energy Source: ${buildingData.energySource}
-      - Water System: ${buildingData.waterSystem}
-      - Additional Features: ${buildingData.additionalFeatures}
+      Region: "${region}"
 
       Return the analysis in a JSON object.
     `;
-
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -72,21 +62,92 @@ export const analyzeSustainability = async (buildingData: BuildingData): Promise
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
-                        sustainabilityScore: { type: Type.NUMBER, description: "A score from 0-100." },
-                        pros: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Positive sustainability aspects." },
-                        cons: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Negative sustainability aspects." },
-                        suggestions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Suggestions for improvement." },
-                        summary: { type: Type.STRING, description: "A brief summary of the analysis." }
+                        weatherSummary: { type: Type.STRING },
+                        sustainabilityMeasures: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        transportationNotes: { type: Type.STRING }
                     },
-                    required: ["sustainabilityScore", "pros", "cons", "suggestions", "summary"]
+                    required: ["weatherSummary", "sustainabilityMeasures", "transportationNotes"]
+                }
+            }
+        });
+        return JSON.parse(response.text.trim());
+    } catch (error) {
+        console.error("Error analyzing location with Gemini API:", error);
+        throw new Error("Failed to get a valid location analysis from the AI.");
+    }
+};
+
+export const analyzeSustainability = async (buildingData: BuildingData): Promise<AnalysisResult> => {
+    const prompt = `
+      Analyze the sustainability of the following building concept based on the principles of sustainable architecture (like LEED, Passive House, etc.).
+      Provide a holistic sustainability score from 0 to 100.
+      Provide a brief summary of the analysis.
+      Provide categorized recommendations for improvement. The categories are: 'Energy Efficiency', 'Water Conservation', 'Sustainable Materials', and 'Site & Waste Management'. Provide at least two actionable recommendations per category.
+
+      Building Data:
+      ${JSON.stringify(buildingData, null, 2)}
+
+      Return the analysis in a JSON object.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro', // Using a more powerful model for complex analysis
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        sustainabilityScore: { type: Type.NUMBER },
+                        summary: { type: Type.STRING },
+                        recommendations: {
+                            type: Type.OBJECT,
+                            properties: {
+                                'Energy Efficiency': { type: Type.ARRAY, items: { type: Type.STRING } },
+                                'Water Conservation': { type: Type.ARRAY, items: { type: Type.STRING } },
+                                'Sustainable Materials': { type: Type.ARRAY, items: { type: Type.STRING } },
+                                'Site & Waste Management': { type: Type.ARRAY, items: { type: Type.STRING } }
+                            },
+                             required: ['Energy Efficiency', 'Water Conservation', 'Sustainable Materials', 'Site & Waste Management']
+                        }
+                    },
+                    required: ["sustainabilityScore", "summary", "recommendations"]
                 }
             }
         });
 
-        const jsonText = response.text.trim();
-        return JSON.parse(jsonText);
+        return JSON.parse(response.text.trim());
     } catch (error) {
         console.error("Error analyzing sustainability with Gemini API:", error);
         throw new Error("Failed to get a valid analysis from the AI. Please try again.");
+    }
+};
+
+export const saveBuildingAnalysis = async (data: BuildingData): Promise<{ buildingId: string }> => {
+    // This is a placeholder for a real API call to a secure backend.
+    // The backend would handle the connection to MongoDB.
+    console.log("Saving building data to database via API call:", data);
+
+    try {
+        const response = await fetch("http://localhost:5000/api/buildings", { // Fictional endpoint
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `API Error: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log("Saved successfully, received ID:", result.buildingId);
+        return result; // Assuming backend returns { buildingId: '...' }
+    } catch (error) {
+        console.error("Failed to save building analysis:", error);
+        alert("This is a demo. Data is not being saved to a live database.");
+        // For demonstration, return a mock ID on failure to allow UI to proceed.
+        return { buildingId: `mock_id_${Date.now()}` };
     }
 };

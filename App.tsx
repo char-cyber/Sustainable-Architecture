@@ -6,7 +6,6 @@ import { ViewMyBuildingsPage } from './pages/viewMyBuildings';
 import { AboutProjPage } from './pages/aboutProj';
 import  LogIn  from './pages/login/loginForm';
 import { LeafIcon } from './components/icons/LeafIcon';
-import { ChatPage } from './pages/ChatPage';
 import { CustomizeBuildingPage } from './pages/CustomizeBuildingPage';
 
 export type Page = 'home' | 'addNewBuilding' | 'viewMyBuildings' | 'aboutProj' | 'aboutAi';

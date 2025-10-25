@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-interface IBuilding {
+interface Building {
   name: string;
   sustainabilityScore: number;
   sustainabilitySummary: string;
@@ -15,7 +15,7 @@ interface IBuilding {
 export interface IUser extends Document {
   username: string;
   password: string;
-  buildings: IBuilding[];
+  buildings: Building[];
 }
 
 const BuildingSchema: Schema = new Schema({

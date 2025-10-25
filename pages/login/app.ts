@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import bodyParser from 'body-parser';
-import User from './models/users';
+import User from '../../models/users';
 
 dotenv.config();
 const app = express();
