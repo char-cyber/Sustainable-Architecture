@@ -39,7 +39,7 @@ const App: React.FC = () => {
                 return <HomePage setPage={setPage} />;
             case 'addNewBuilding':
                 return <AddNewBuildingPage onSaveComplete={handleSaveComplete} />;
-            case 'login':
+            case 'logIn':
                 return < LoginPage />;
             case 'viewMyBuildings':
                 return <ViewMyBuildingsPage onViewDetails={handleViewDetails} />;

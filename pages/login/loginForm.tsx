@@ -27,6 +27,7 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
       if (res.ok && data.userId) {
         setMessage("Success! Redirecting...");
         setIsSuccess(true);
+        localStorage.setItem("userId", data.userId);
         // Delay to show success message before calling onLogin
         setTimeout(() => {
             onLogin(data.userId);
