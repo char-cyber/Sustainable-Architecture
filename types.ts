@@ -53,3 +53,13 @@ export interface AnalysisResult {
     'Site & Waste Management': string[];
   };
 }
+
+/**
+ * Represents a complete building document saved in the database.
+ */
+export interface SavedBuilding {
+  _id: string;
+  buildingData: BuildingData;
+  analysisResult: AnalysisResult;
+  createdAt?: string;
+}

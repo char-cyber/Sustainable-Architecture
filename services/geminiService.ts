@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SOURCE_URLS } from '../constants';
-import { BuildingData, AnalysisResult, LocationAnalysis } from '../types';
+import { BuildingData, AnalysisResult, LocationAnalysis, SavedBuilding } from '../types';
 
 // It is assumed that process.env.API_KEY is available in the execution environment.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -124,30 +124,67 @@ export const analyzeSustainability = async (buildingData: BuildingData): Promise
     }
 };
 
-export const saveBuildingAnalysis = async (data: BuildingData): Promise<{ buildingId: string }> => {
-    // This is a placeholder for a real API call to a secure backend.
-    // The backend would handle the connection to MongoDB.
-    console.log("Saving building data to database via API call:", data);
+export const saveBuildingAnalysis = async (
+  buildingData: BuildingData,
+  analysisResult: AnalysisResult
+): Promise<SavedBuilding> => {
+  console.log("Saving building data and analysis to database via API call...");
+  const payload = { buildingData, analysisResult };
+  try {
+    const response = await fetch("http://localhost:5000/api/buildings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `API Error: ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to save building analysis:", error);
+    alert("This is a demo. Data is not being saved to a live database.");
+    // For demonstration, return a mock object on failure to allow UI to proceed.
+    return { _id: `mock_id_${Date.now()}`, buildingData, analysisResult };
+  }
+};
 
+export const getBuildings = async (): Promise<SavedBuilding[]> => {
+    console.log("Fetching all buildings...");
     try {
-        const response = await fetch("http://localhost:5000/api/buildings", { // Fictional endpoint
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
-        });
+        const response = await fetch("http://localhost:5000/api/buildings");
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.statusText}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error("Failed to fetch buildings:", error);
+        alert("Could not connect to the server to fetch buildings. Displaying empty list.");
+        return [];
+    }
+};
 
+export const updateBuilding = async (
+  id: string,
+  buildingData: BuildingData,
+  analysisResult: AnalysisResult
+): Promise<SavedBuilding> => {
+    console.log(`Updating building ${id}...`);
+    const payload = { buildingData, analysisResult };
+    try {
+        const response = await fetch(`http://localhost:5000/api/buildings/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.message || `API Error: ${response.statusText}`);
         }
-
-        const result = await response.json();
-        console.log("Saved successfully, received ID:", result.buildingId);
-        return result; // Assuming backend returns { buildingId: '...' }
+        return await response.json();
     } catch (error) {
-        console.error("Failed to save building analysis:", error);
-        alert("This is a demo. Data is not being saved to a live database.");
-        // For demonstration, return a mock ID on failure to allow UI to proceed.
-        return { buildingId: `mock_id_${Date.now()}` };
+        console.error(`Failed to update building ${id}:`, error);
+        alert("This is a demo. Data is not being updated in a live database.");
+        return { _id: id, buildingData, analysisResult };
     }
 };

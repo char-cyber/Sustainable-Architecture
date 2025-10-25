@@ -1,66 +1,55 @@
-import React, { useState, useCallback, ChangeEvent } from 'react';
+import React, { useState, useCallback, ChangeEvent, useEffect } from 'react';
 import { BuildingData, LocationAnalysis, AnalysisResult, SavedBuilding } from '../types';
-import { analyzeLocation, analyzeSustainability, saveBuildingAnalysis } from '../services/geminiService';
-
-const initialBuildingData: BuildingData = {
-  locationRegion: '',
-  housingType: '',
-  floors: '1-5',
-  roomsMin: 1,
-  roomsMax: 6,
-  elevators: 1,
-  spacePerRoom: '500-800 sq ft',
-  architecturalStyle: 'Contemporary',
-  materialType: 'Type 2: Non-Combustible',
-  wasteReduction: [],
-  energyEfficiency: [],
-  resourceEfficiency: {
-    thermalMass: false,
-    buildingOrientation: '',
-    envelopeUValue: 0.5,
-  },
-  waterFixtures: 'Standard',
-  additionalFeatures: '',
-};
+import { analyzeLocation, analyzeSustainability, updateBuilding } from '../services/geminiService';
 
 const commonInputClasses = "w-full p-2 rounded-md border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500";
 const labelClasses = "block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1";
 const checkboxLabelClasses = "flex items-center space-x-2 text-sm text-slate-700 dark:text-slate-300";
 
 interface Props {
+    building: SavedBuilding;
     onSaveComplete: (savedBuilding: SavedBuilding) => void;
 }
 
-export const AddNewBuildingPage: React.FC<Props> = ({ onSaveComplete }) => {
+export const EditBuildingPage: React.FC<Props> = ({ building, onSaveComplete }) => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [buildingData, setBuildingData] = useState<BuildingData>(initialBuildingData);
+  const [buildingData, setBuildingData] = useState<BuildingData>(building.buildingData);
   
   const [locationAnalysis, setLocationAnalysis] = useState<LocationAnalysis | null>(null);
   const [isLocationLoading, setIsLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
 
-  const [finalResult, setFinalResult] = useState<AnalysisResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   
-  const handleAnalyzeLocation = useCallback(async () => {
-    if (!buildingData.locationRegion) return;
+  useEffect(() => {
+    // Automatically run location analysis for the existing location on load
+    handleAnalyzeLocation(building.buildingData.locationRegion);
+  }, [building.buildingData.locationRegion]);
+
+  const handleAnalyzeLocation = useCallback(async (region: BuildingData['locationRegion']) => {
+    if (!region) return;
     setIsLocationLoading(true);
     setLocationError(null);
     setLocationAnalysis(null);
     try {
-      const result = await analyzeLocation(buildingData.locationRegion);
+      const result = await analyzeLocation(region);
       setLocationAnalysis(result);
     } catch (err) {
       setLocationError(err instanceof Error ? err.message : 'An unknown error occurred.');
     } finally {
       setIsLocationLoading(false);
     }
-  }, [buildingData.locationRegion]);
+  }, []);
 
   const handleFormChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     const isCheckbox = type === 'checkbox';
+    
+    // Trigger re-analysis if location changes
+    if (name === 'locationRegion') {
+        handleAnalyzeLocation(value as BuildingData['locationRegion']);
+    }
 
     if (name.startsWith('resourceEfficiency.')) {
         const key = name.split('.')[1];
@@ -88,20 +77,20 @@ export const AddNewBuildingPage: React.FC<Props> = ({ onSaveComplete }) => {
   const handleSubmit = useCallback(async () => {
     setIsSubmitting(true);
     setSubmitError(null);
-    setFinalResult(null);
     try {
-      const analysis = await analyzeSustainability(buildingData);
-      setFinalResult(analysis);
-      const savedBuilding = await saveBuildingAnalysis(buildingData, analysis);
-      onSaveComplete(savedBuilding);
+      const newAnalysis = await analyzeSustainability(buildingData);
+      const updatedBuilding = await updateBuilding(building._id, buildingData, newAnalysis);
+      onSaveComplete(updatedBuilding);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'An unknown error occurred.');
     } finally {
       setIsSubmitting(false);
     }
-  }, [buildingData, onSaveComplete]);
+  }, [building, buildingData, onSaveComplete]);
 
  const renderFormStep = () => {
+    // This form is identical to the AddNewBuildingPage form.
+    // In a larger app, this would be a shared component.
     switch (currentStep) {
       case 1: // Basic
         return (
@@ -222,7 +211,7 @@ export const AddNewBuildingPage: React.FC<Props> = ({ onSaveComplete }) => {
                     <p><strong>Style:</strong> {buildingData.architecturalStyle} using {buildingData.materialType}</p>
                     <p><strong>Energy:</strong> {buildingData.energyEfficiency.join(', ') || 'None specified'}</p>
                 </div>
-                <p className="text-sm text-slate-500">Please review your selections. When you are ready, submit for a full sustainability analysis and to save your project.</p>
+                <p className="text-sm text-slate-500">Please review your selections. When you are ready, submit to re-analyze and save your changes.</p>
             </div>
         );
       default: return null;
@@ -230,19 +219,17 @@ export const AddNewBuildingPage: React.FC<Props> = ({ onSaveComplete }) => {
   };
 
   if (isSubmitting) {
-      return <div className="text-center p-8 pt-24"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500 mx-auto"></div><p className="mt-4">Analyzing and saving your new building...</p></div>;
+      return <div className="text-center p-8 pt-24"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500 mx-auto"></div><p className="mt-4">Re-analyzing and saving changes...</p></div>;
   }
-
-  if (submitError) {
+   if (submitError) {
       return <div className="p-8 pt-24"><div className="bg-red-100 dark:bg-red-900/50 border border-red-400 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg">{submitError}</div></div>;
   }
-  
+
   const steps = ['Basic', 'Styles', 'Efficiency', 'Additional', 'Review'];
 
   return (
     <main className="p-4 md:p-8 pt-24">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        {/* Left Column */}
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 sticky top-24">
           <h2 className="text-xl font-semibold mb-4 text-emerald-600 dark:text-emerald-400">1. Site Analysis</h2>
           <div>
@@ -258,7 +245,7 @@ export const AddNewBuildingPage: React.FC<Props> = ({ onSaveComplete }) => {
                 <option value="">Select a Region</option>
                 <option>Central</option><option>East</option><option>West</option><option>South</option><option>North</option><option>Puerto Rico</option>
               </select>
-              <button onClick={handleAnalyzeLocation} disabled={!buildingData.locationRegion || isLocationLoading} className="px-4 py-2 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 disabled:bg-slate-400">
+              <button onClick={() => handleAnalyzeLocation(buildingData.locationRegion)} disabled={!buildingData.locationRegion || isLocationLoading} className="px-4 py-2 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 disabled:bg-slate-400">
                 {isLocationLoading ? '...' : 'Analyze'}
               </button>
             </div>
@@ -287,11 +274,8 @@ export const AddNewBuildingPage: React.FC<Props> = ({ onSaveComplete }) => {
           </div>
         </div>
 
-        {/* Right Column */}
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
-           <h2 className="text-xl font-semibold mb-4 text-emerald-600 dark:text-emerald-400">2. Building Details</h2>
-            <>
-              {/* Mini Nav Bar */}
+           <h2 className="text-xl font-semibold mb-4 text-emerald-600 dark:text-emerald-400">Editing: {building.buildingData.housingType}</h2>
               <div className="flex border-b border-slate-200 dark:border-slate-700 mb-6">
                   {steps.map((step, index) => (
                       <button key={step} onClick={() => goToStep(index + 1)} className={`px-4 py-2 text-sm font-medium transition-colors ${currentStep === index + 1 ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
@@ -299,12 +283,9 @@ export const AddNewBuildingPage: React.FC<Props> = ({ onSaveComplete }) => {
                       </button>
                   ))}
               </div>
-
               <div className="min-h-[20rem]">
                   {renderFormStep()}
               </div>
-          
-              {/* Form Navigation */}
               <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
                   <button onClick={prevStep} disabled={currentStep === 1} className="px-4 py-2 bg-slate-200 dark:bg-slate-600 text-slate-800 dark:text-slate-200 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 disabled:opacity-50">
                       Previous
@@ -315,11 +296,10 @@ export const AddNewBuildingPage: React.FC<Props> = ({ onSaveComplete }) => {
                       </button>
                   ) : (
                       <button onClick={handleSubmit} disabled={isSubmitting} className="px-4 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 disabled:bg-slate-400">
-                          {isSubmitting ? 'Submitting...' : 'Analyze & Save'}
+                          {isSubmitting ? 'Submitting...' : 'Re-Analyze & Save Changes'}
                       </button>
                   )}
               </div>
-            </>
         </div>
       </div>
     </main>

@@ -4,33 +4,61 @@ import { AboutAiPage } from './pages/aboutAi';
 import { AddNewBuildingPage } from './pages/addNewBuilding';
 import { ViewMyBuildingsPage } from './pages/viewMyBuildings';
 import { AboutProjPage } from './pages/aboutProj';
-import  LogIn  from './pages/login/loginForm';
+import { ViewBuildingDetailsPage } from './pages/ViewBuildingDetails';
+import { EditBuildingPage } from './pages/editBuilding';
 import { LeafIcon } from './components/icons/LeafIcon';
-import { CustomizeBuildingPage } from './pages/CustomizeBuildingPage';
+import { SavedBuilding } from './types';
+import LoginPage from './pages/login/loginForm';
 
-export type Page = 'home' | 'addNewBuilding' | 'viewMyBuildings' | 'aboutProj' | 'aboutAi';
+export type Page = 'home' | 'addNewBuilding' | 'viewMyBuildings' | 'aboutProj' | 'aboutAi' | 'viewBuildingDetails' | 'editBuilding';
 
 const App: React.FC = () => {
     const [page, setPage] = useState<Page>('home');
+    const [selectedBuilding, setSelectedBuilding] = useState<SavedBuilding | null>(null);
 
     const navButtonClasses = `px-3 py-2 text-sm font-medium rounded-md transition-colors text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/50`;
+
+    const handleViewDetails = (building: SavedBuilding) => {
+        setSelectedBuilding(building);
+        setPage('viewBuildingDetails');
+    };
+    
+    const handleEditBuilding = (building: SavedBuilding) => {
+        setSelectedBuilding(building);
+        setPage('editBuilding');
+    };
+
+    const handleSaveComplete = (savedBuilding: SavedBuilding) => {
+        setSelectedBuilding(savedBuilding);
+        setPage('viewBuildingDetails');
+    };
 
     const renderPage = () => {
         switch(page) {
             case 'home':
                 return <HomePage setPage={setPage} />;
-                case 'addNewBuilding':
-                  return <AddNewBuildingPage setPage={setPage} />;
-                case 'textbuilding':
-                  return <CustomizeBuildingPage setPage={setPage} />;
+            case 'addNewBuilding':
+                return <AddNewBuildingPage onSaveComplete={handleSaveComplete} />;
+            case 'login':
+                return < LoginPage />;
             case 'viewMyBuildings':
-                return <ViewMyBuildingsPage />;
+                return <ViewMyBuildingsPage onViewDetails={handleViewDetails} />;
             case 'aboutProj':
                 return <AboutProjPage />;
             case 'aboutAi':
                 return <AboutAiPage />;
-            case 'logIn':
-                return <LogIn />;
+            case 'viewBuildingDetails':
+                if (!selectedBuilding) {
+                    setPage('viewMyBuildings'); // Redirect if no building is selected
+                    return null;
+                }
+                return <ViewBuildingDetailsPage building={selectedBuilding} onEdit={handleEditBuilding} />;
+            case 'editBuilding':
+                 if (!selectedBuilding) {
+                    setPage('viewMyBuildings'); // Redirect if no building is selected
+                    return null;
+                }
+                return <EditBuildingPage building={selectedBuilding} onSaveComplete={handleSaveComplete} />;
             default:
                 return <HomePage setPage={setPage} />;
         }
@@ -51,11 +79,11 @@ const App: React.FC = () => {
                     </h1>
                 </div>
                 <nav className="flex items-center space-x-2">
-                    <button onClick={() => setPage('HomePage')} className={navButtonClasses}>
+                    <button onClick={() => setPage('home')} className={navButtonClasses}>
                         Home
                     </button>
                     <button onClick={() => setPage('logIn')} className={navButtonClasses}>
-                        Login
+                        Log In
                     </button>
                     <button onClick={() => setPage('aboutProj')} className={navButtonClasses}>
                         About
