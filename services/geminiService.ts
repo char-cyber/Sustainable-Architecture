@@ -1,85 +1,92 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import type { BuildingData, AnalysisResult } from '../types';
+import { SOURCE_URLS } from '../constants';
+import { BuildingData, AnalysisResult } from '../types';
 
+// It is assumed that process.env.API_KEY is available in the execution environment.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
-const generatePrompt = (data: BuildingData): string => {
-  return `
-    Act as an expert in sustainable architecture and green building design (LEED certified professional).
-    Analyze the following building proposal for its environmental sustainability.
+export const generateResponse = async (userPrompt: string): Promise<string> => {
+  if (!userPrompt.trim()) {
+    throw new Error("Prompt cannot be empty.");
+  }
 
-    Building Details:
-    - Purpose: ${data.purpose}
-    - Number of Floors: ${data.floors}
-    - Total Area (sq ft): ${data.area}
-    - Location Type: ${data.location}
-    - Primary Materials: ${data.materials}
-    - Primary Energy Source: ${data.energySource}
-    - Water System: ${data.waterSystem}
-    - Additional Features/Notes: ${data.additionalFeatures}
+  const sourcesText = SOURCE_URLS.map(source => `- ${source.name}: ${source.url}`).join('\n');
 
-    Based on these details, perform the following tasks:
-    1.  Generate a sustainability score from 0 to 100. A score of 0 indicates a building with no sustainable features, while 100 represents a carbon-neutral, fully regenerative building.
-    2.  Provide a brief, insightful summary (2-3 sentences) of the building's current sustainability profile.
-    3.  Provide specific, actionable suggestions for improvement. Group these suggestions into the following categories: 'Energy Efficiency', 'Water Conservation', 'Sustainable Materials', and 'Site & Waste Management'. Provide at least 2 recommendations per category.
+  const fullPrompt = `
+    You are an expert AI assistant specializing in sustainable architecture. Your knowledge is based on leading industry resources.
+    Answer the following question based ONLY on the information that could be found in the provided sources.
+    Do not use any external knowledge. Format your answer using Markdown for readability (e.g., use headings, lists, and bold text).
 
-    Your entire response MUST be a single, valid JSON object that adheres to the provided schema. Do not include any text, explanation, or markdown formatting before or after the JSON object.
+    QUESTION:
+    "${userPrompt}"
+
+    SOURCES:
+    ${sourcesText}
+
+    Provide a comprehensive and well-structured answer.
   `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: fullPrompt,
+    });
+    return response.text;
+  } catch (error) {
+    console.error("Error generating response from Gemini API:", error);
+    if (error instanceof Error) {
+        return `An error occurred while contacting the AI. Please check your API key and network connection. Details: ${error.message}`;
+    }
+    return "An unknown error occurred while contacting the AI.";
+  }
 };
 
-export const analyzeSustainability = async (data: BuildingData): Promise<AnalysisResult> => {
-  try {
-    const prompt = generatePrompt(data);
+export const analyzeSustainability = async (buildingData: BuildingData): Promise<AnalysisResult> => {
+    const prompt = `
+      Analyze the sustainability of the following building concept based on the principles of sustainable architecture (like LEED, Passive House, etc.).
+      Provide a sustainability score from 0 to 100, where 100 is perfectly sustainable.
+      List the key pros and cons regarding sustainability.
+      Provide at least 3 actionable suggestions for improvement.
+      Write a brief summary of the analysis.
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            score: {
-              type: Type.NUMBER,
-              description: "The sustainability score from 0 to 100."
-            },
-            summary: {
-              type: Type.STRING,
-              description: "A brief summary of the sustainability analysis."
-            },
-            suggestions: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  category: {
-                    type: Type.STRING,
-                    description: "The category of sustainability suggestions (e.g., 'Energy Efficiency')."
-                  },
-                  recommendations: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.STRING,
-                      description: "A specific recommendation for improvement."
-                    }
-                  }
-                },
-                required: ["category", "recommendations"]
-              }
+      Building Data:
+      - Purpose: ${buildingData.purpose}
+      - Location: ${buildingData.location}
+      - Floors: ${buildingData.floors}
+      - Total Area (sq ft): ${buildingData.area}
+      - Primary Materials: ${buildingData.materials}
+      - Energy Source: ${buildingData.energySource}
+      - Water System: ${buildingData.waterSystem}
+      - Additional Features: ${buildingData.additionalFeatures}
+
+      Return the analysis in a JSON object.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        sustainabilityScore: { type: Type.NUMBER, description: "A score from 0-100." },
+                        pros: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Positive sustainability aspects." },
+                        cons: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Negative sustainability aspects." },
+                        suggestions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Suggestions for improvement." },
+                        summary: { type: Type.STRING, description: "A brief summary of the analysis." }
+                    },
+                    required: ["sustainabilityScore", "pros", "cons", "suggestions", "summary"]
+                }
             }
-          },
-          required: ["score", "summary", "suggestions"]
-        },
-      },
-    });
+        });
 
-    const jsonText = response.text.trim();
-    const result: AnalysisResult = JSON.parse(jsonText);
-    return result;
-
-  } catch (error) {
-    console.error("Error calling Gemini API:", error);
-    throw new Error("Failed to get sustainability analysis. Please check your API key and try again.");
-  }
+        const jsonText = response.text.trim();
+        return JSON.parse(jsonText);
+    } catch (error) {
+        console.error("Error analyzing sustainability with Gemini API:", error);
+        throw new Error("Failed to get a valid analysis from the AI. Please try again.");
+    }
 };

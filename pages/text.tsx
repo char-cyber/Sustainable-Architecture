@@ -1,10 +1,10 @@
 //handles the text inputs 
 import React from 'react'
 
-const text = () => {
+const ChatPage = () => {
   return (
     <div>text</div>
   )
 }
 
-export default text
+export default ChatPage
