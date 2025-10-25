@@ -1,0 +1,333 @@
+
+import React, { useState, useEffect } from 'react';
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, Auth } from 'firebase/auth';
+import { getFirestore, Firestore, setLogLevel } from 'firebase/firestore';
+
+// --- Global Variable Handling ---
+
+// Define the shape of the data needed for the component structure
+declare const __firebase_config: string | undefined;
+declare const __initial_auth_token: string | undefined;
+declare const __app_id: string | undefined;
+
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+// --- Firebase Initialization (Global within file scope) ---
+// Initialize Firebase services once when the file loads.
+let app: FirebaseApp | undefined = undefined;
+let db: Firestore | undefined = undefined;
+let auth: Auth | undefined = undefined;
+
+if (Object.keys(firebaseConfig).length > 0) {
+    try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+        setLogLevel('debug');
+    } catch (error) {
+        console.error("Firebase initialization failed:", error);
+    }
+}
+// ---------------------------------------------------------
+
+// --- Type Definitions ---
+
+export type Page = 'home' | 'addNewBuilding' | 'viewMyBuildings' | 'aboutProj' | 'aboutAi' | 'viewBuildingDetails' | 'editBuilding' | 'logIn';
+
+interface AnalysisResult {
+    sustainabilityScore: number;
+    summary: string;
+    recommendations: {
+        'Energy Efficiency': string[];
+        'Water Conservation': string[];
+        'Sustainable Materials': string[];
+        'Site & Waste Management': string[];
+    };
+}
+
+interface BuildingData {
+    name: string;
+    type: string;
+    locationRegion: string;
+    [key: string]: any; // Allows for flexibility in the full data structure
+}
+
+export interface SavedBuilding {
+    id: string;
+    buildingData: BuildingData;
+    analysisResult: AnalysisResult;
+    userId: string;
+}
+
+// --- Component Props Interfaces ---
+
+interface LeafIconProps { className: string; }
+interface HomePageProps { setPage: (page: Page) => void; }
+interface ViewMyBuildingsPageProps { onViewDetails: (building: SavedBuilding) => void; }
+interface ViewBuildingDetailsPageProps { building: SavedBuilding; onEdit: (building: SavedBuilding) => void; }
+interface EditBuildingPageProps { building: SavedBuilding; onSaveComplete: (savedBuilding: SavedBuilding) => void; }
+interface AddNewBuildingPageProps { onSaveComplete: (savedBuilding: SavedBuilding) => void; }
+
+// --- Component Stubs (To ensure the App component is runnable) ---
+
+const LeafIcon: React.FC<LeafIconProps> = ({ className }) => (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+);
+
+const HomePage: React.FC<HomePageProps> = ({ setPage }) => (
+    <div className="flex flex-col items-center justify-center pt-20 px-4">
+        <h2 className="text-4xl font-extrabold mb-6 text-emerald-600 dark:text-emerald-400">Welcome to Sustainable AI</h2>
+        <p className="text-lg text-center max-w-2xl mb-12">
+            Your hub for designing and analyzing eco-friendly architecture concepts using the power of generative AI.
+        </p>
+        <div className="flex space-x-6">
+            <button
+                onClick={() => setPage('addNewBuilding')}
+                className="px-6 py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-700 transition-transform transform hover:scale-105"
+            >
+                Start New Analysis
+            </button>
+            <button
+                onClick={() => setPage('viewMyBuildings')}
+                className="px-6 py-3 bg-slate-300 text-slate-800 font-bold rounded-xl shadow-lg hover:bg-slate-400 transition-transform transform hover:scale-105"
+            >
+                View Saved Buildings
+            </button>
+        </div>
+    </div>
+);
+
+// The remaining pages are simple placeholders for navigation testing
+const AboutAiPage: React.FC = () => <div className="p-8 pt-20 text-center">
+    <h2 className="text-3xl font-bold mb-4">Our AI Model</h2>
+    <p>This section would detail the Gemini model's role in the sustainability analysis.</p>
+</div>;
+const AddNewBuildingPage: React.FC<AddNewBuildingPageProps> = ({ onSaveComplete }) => <div className="p-8 pt-20 text-center">
+    <h2 className="text-3xl font-bold mb-4">Add New Building (Placeholder)</h2>
+    <p>Form to input building data goes here. On completion, it calls `onSaveComplete`.</p>
+</div>;
+const ViewMyBuildingsPage: React.FC<ViewMyBuildingsPageProps> = ({ onViewDetails }) => <div className="p-8 pt-20 text-center">
+    <h2 className="text-3xl font-bold mb-4">My Buildings (Placeholder)</h2>
+    <p>List of saved buildings goes here.</p>
+</div>;
+const AboutProjPage: React.FC = () => <div className="p-8 pt-20 text-center">
+    <h2 className="text-3xl font-bold mb-4">About Project (Placeholder)</h2>
+    <p>Details about the overall project and mission.</p>
+</div>;
+const ViewBuildingDetailsPage: React.FC<ViewBuildingDetailsPageProps> = ({ building }) => (
+    <div className="p-8 pt-20 text-center">
+        <h2 className="text-3xl font-bold mb-4">Building Details (Placeholder)</h2>
+        <p>Details and analysis of a single building: **{building.buildingData.name}**</p>
+    </div>
+);
+const EditBuildingPage: React.FC<EditBuildingPageProps> = ({ building, onSaveComplete }) => (
+    <div className="p-8 pt-20 text-center">
+        <h2 className="text-3xl font-bold mb-4">Edit Building (Placeholder)</h2>
+        <p>Form for editing building data: **{building.buildingData.name}**</p>
+    </div>
+);
+
+// --- Main Application Component ---
+
+const App: React.FC = () => {
+    const [userId, setUserId] = useState<string | null>(null);
+    const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
+    const [page, setPage] = useState<Page>('home');
+    const [selectedBuilding, setSelectedBuilding] = useState<SavedBuilding | null>(null);
+
+    // --- Authentication and State Management ---
+    useEffect(() => {
+        // Use the globally initialized 'auth'
+        if (!auth) {
+            console.error("Firebase Auth not initialized. Check firebaseConfig.");
+            setIsAuthReady(true); // Still mark ready to display the app even if auth failed
+            return;
+        }
+
+        const initAuth = async () => {
+            // 1. Initial Sign-in Attempt
+            try {
+                if (initialAuthToken) {
+                    // We know auth is defined here due to the check above
+                    await signInWithCustomToken(auth, initialAuthToken);
+                    console.log("Signed in with custom token.");
+                } else {
+                    await signInAnonymously(auth);
+                    console.log("Signed in anonymously.");
+                }
+            } catch (error) {
+                console.error("Initial Firebase sign-in failed:", error);
+            }
+
+            // 2. Auth State Listener
+            const unsubscribe = onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    setUserId(user.uid);
+                    console.log("User UID:", user.uid);
+                } else {
+                    setUserId(null);
+                    console.log("User signed out or is null.");
+                }
+                setIsAuthReady(true);
+            });
+
+            // Cleanup subscription on unmount
+            return () => unsubscribe();
+        };
+
+        initAuth();
+    // Dependency array is empty because 'auth' is a file-scoped constant reference after the initial global check.
+    }, []); 
+
+    const handleLogout = async () => {
+        if (auth) {
+            try {
+                await signOut(auth);
+                setPage('home');
+                console.log("User logged out successfully.");
+            } catch (error) {
+                console.error("Logout failed:", error);
+            }
+        }
+    };
+
+    // --- Navigation and Data Handlers ---
+
+    const navButtonClasses: string = `px-3 py-2 text-sm font-medium rounded-lg transition-colors text-slate-600 dark:text-slate-300 hover:bg-emerald-100 dark:hover:bg-slate-700/50`;
+    const activeNavButtonClasses: string = `px-3 py-2 text-sm font-bold rounded-lg transition-colors bg-emerald-500 text-white shadow-md`;
+
+    const handleViewDetails = (building: SavedBuilding) => {
+        setSelectedBuilding(building);
+        setPage('viewBuildingDetails');
+    };
+    
+    const handleEditBuilding = (building: SavedBuilding) => {
+        setSelectedBuilding(building);
+        setPage('editBuilding');
+    };
+
+    const handleSaveComplete = (savedBuilding: SavedBuilding) => {
+        setSelectedBuilding(savedBuilding);
+        setPage('viewBuildingDetails');
+    };
+
+    const renderPage = () => {
+        if (!isAuthReady) {
+            return null; // Should be caught by the main loading screen
+        }
+
+        switch(page) {
+            case 'home':
+                return <HomePage setPage={setPage} />;
+            case 'addNewBuilding':
+                return <AddNewBuildingPage onSaveComplete={handleSaveComplete} />;
+            case 'viewMyBuildings':
+                return <ViewMyBuildingsPage onViewDetails={handleViewDetails} />;
+            case 'aboutProj':
+                return <AboutProjPage />;
+            case 'aboutAi':
+                return <AboutAiPage />;
+            case 'viewBuildingDetails':
+                if (!selectedBuilding) {
+                    setPage('viewMyBuildings'); 
+                    return null;
+                }
+                // Pass a stable reference of the building
+                return <ViewBuildingDetailsPage building={selectedBuilding} onEdit={handleEditBuilding} />;
+            case 'editBuilding':
+                if (!selectedBuilding) {
+                    setPage('viewMyBuildings'); 
+                    return null;
+                }
+                // Pass a stable reference of the building
+                return <EditBuildingPage building={selectedBuilding} onSaveComplete={handleSaveComplete} />;
+            default:
+                return <HomePage setPage={setPage} />;
+        }
+    };
+
+    // --- Loading State ---
+
+    if (!isAuthReady) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-slate-100 dark:bg-slate-900">
+                <div className="text-xl font-medium text-emerald-600 animate-pulse">
+                    Loading Sustainable AI Application...
+                </div>
+            </div>
+        );
+    }
+
+    // --- Main Layout (Rendered after authentication is ready) ---
+
+    return (
+        <div className="flex flex-col h-screen max-h-screen font-sans bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+            <header className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 bg-transparent z-10">
+                <div 
+                    className="flex items-center cursor-pointer group" 
+                    onClick={() => setPage('home')}
+                    aria-label="Go to home page"
+                    role="button"
+                >
+                    <LeafIcon className="h-8 w-8 text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-500 transition-colors" />
+                    <h1 className="ml-3 text-xl font-bold text-slate-800 dark:text-slate-200 group-hover:text-slate-600 dark:group-hover:text-white transition-colors">
+                        Sustainable Architecture AI
+                    </h1>
+                </div>
+                <nav className="flex items-center space-x-2">
+                    {/* Primary Navigation */}
+                    <button 
+                        onClick={() => setPage('addNewBuilding')} 
+                        className={page === 'addNewBuilding' ? activeNavButtonClasses : navButtonClasses}
+                    >
+                        New Analysis
+                    </button>
+                    <button 
+                        onClick={() => setPage('viewMyBuildings')} 
+                        className={page === 'viewMyBuildings' ? activeNavButtonClasses : navButtonClasses}
+                    >
+                        My Buildings
+                    </button>
+                    <button 
+                        onClick={() => setPage('aboutProj')} 
+                        className={page === 'aboutProj' ? activeNavButtonClasses : navButtonClasses}
+                    >
+                        About Project
+                    </button>
+                    <button 
+                        onClick={() => setPage('aboutAi')} 
+                        className={page === 'aboutAi' ? activeNavButtonClasses : navButtonClasses}
+                    >
+                        Our AI Model
+                    </button>
+
+                    {/* Authentication Status and Logout */}
+                    <div className="ml-4 px-3 py-2 text-xs font-mono bg-slate-200 dark:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-400">
+                        User: {userId ? `UID: ${userId.substring(0, 8)}...` : 'N/A'}
+                    </div>
+                    <button 
+                        onClick={handleLogout} 
+                        className={`${navButtonClasses} bg-red-100 dark:bg-red-900/50 text-red-600 hover:bg-red-200 dark:hover:bg-red-800/50 font-semibold`}
+                    >
+                        Logout
+                    </button>
+                </nav>
+            </header>
+            
+            <div className="flex-1 overflow-y-auto pt-20">
+              {renderPage()}
+            </div>
+            
+            <footer className="p-2 text-center text-xs text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-800">
+                Application ID: {appId}
+            </footer>
+        </div>
+    );
+};
+
+export default App;
