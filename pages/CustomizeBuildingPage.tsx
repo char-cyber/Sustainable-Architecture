@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { BuildingForm } from '../components/BuildingForm';
 import { ResultsDisplay } from '../components/ResultsDisplay';
