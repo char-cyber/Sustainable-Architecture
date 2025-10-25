@@ -1,0 +1,1 @@
+//home, view my buildings, add a new buildings
