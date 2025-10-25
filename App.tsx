@@ -66,7 +66,8 @@ const App: React.FC = () => {
 
     return (
         <div className="flex flex-col h-screen max-h-screen font-sans bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
-            <header className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 bg-transparent z-10">
+            {/* MODIFIED: Removed 'absolute top-0 left-0 right-0', added 'bg-slate-100 dark:bg-slate-900' for a solid background, and added 'sticky top-0' to keep it at the top when scrolling. */}
+            <header className="flex items-center justify-between p-4 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 z-10 sticky top-0">
                 <div 
                     className="flex items-center cursor-pointer group" 
                     onClick={() => setPage('home')}
@@ -94,6 +95,7 @@ const App: React.FC = () => {
                 </nav>
             </header>
             
+            {/* MODIFIED: The header is no longer absolutely positioned, so the content wrapper no longer needs a top offset. The existing flex-1 handles the rest. */}
             <div className="flex-1 overflow-y-auto">
               {renderPage()}
             </div>
