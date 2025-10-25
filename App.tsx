@@ -4,7 +4,7 @@ import { AboutAiPage } from './pages/aboutAi';
 import { AddNewBuildingPage } from './pages/addNewBuilding';
 import { ViewMyBuildingsPage } from './pages/viewMyBuildings';
 import { AboutProjPage } from './pages/aboutProj';
-import  LogIn  from './src/loginForm';
+import  LogIn  from './pages/login/loginForm';
 import { LeafIcon } from './components/icons/LeafIcon';
 
 export type Page = 'home' | 'addNewBuilding' | 'viewMyBuildings' | 'aboutProj' | 'aboutAi';
