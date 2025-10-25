@@ -4,6 +4,7 @@ import { AboutAiPage } from './pages/aboutAi';
 import { AddNewBuildingPage } from './pages/addNewBuilding';
 import { ViewMyBuildingsPage } from './pages/viewMyBuildings';
 import { AboutProjPage } from './pages/aboutProj';
+import  LogIn  from './src/loginForm';
 import { LeafIcon } from './components/icons/LeafIcon';
 
 export type Page = 'home' | 'addNewBuilding' | 'viewMyBuildings' | 'aboutProj' | 'aboutAi';
@@ -25,6 +26,8 @@ const App: React.FC = () => {
                 return <AboutProjPage />;
             case 'aboutAi':
                 return <AboutAiPage />;
+            case 'logIn':
+                return <LogIn />;
             default:
                 return <HomePage setPage={setPage} />;
         }
@@ -45,6 +48,9 @@ const App: React.FC = () => {
                     </h1>
                 </div>
                 <nav className="flex items-center space-x-2">
+                    <button onClick={() => setPage('logIn')} className={navButtonClasses}>
+                        Login
+                    </button>
                     <button onClick={() => setPage('aboutProj')} className={navButtonClasses}>
                         About
                     </button>
