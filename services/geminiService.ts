@@ -148,7 +148,7 @@ export const saveBuildingAnalysis = async (
     return { _id: `mock_id_${Date.now()}`, buildingData, analysisResult };
   }
 };
-
+// adding a comment
 export const getBuildings = async (): Promise<SavedBuilding[]> => {
     console.log("Fetching all buildings...");
     try {
