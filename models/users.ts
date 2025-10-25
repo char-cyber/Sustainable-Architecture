@@ -1,15 +1,19 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 interface Building {
-  name: string;
-  sustainabilityScore: number;
-  sustainabilitySummary: string;
-  recommendations: {
-    'Energy Efficiency': string[];
-    'Water Conservation': string[];
-    'Sustainable Materials': string[];
-    'Site & Waste Management': string[];
+  purpose: string;
+  floors: number;
+  area: number;
+  location: string;
+  materials: string;
+  energySource: string;
+  waterSystem: string;
+  additionalFeatures: string;
+  analysisResult?: {
+    score?: number;
+    recommendations?: string;
   };
+  createdAt?: Date;
 }
 
 export interface IUser extends Document {
@@ -18,22 +22,28 @@ export interface IUser extends Document {
   buildings: Building[];
 }
 
-const BuildingSchema: Schema = new Schema({
-  name: { type: String, required: true },
-  sustainabilityScore: { type: Number, required: true },
-  sustainabilitySummary: { type: String, required: true },
-  recommendations: {
-    'Energy Efficiency': [{ type: String }],
-    'Water Conservation': [{ type: String }],
-    'Sustainable Materials': [{ type: String }],
-    'Site & Waste Management': [{ type: String }],
-  }
+const BuildingSchema = new Schema<Building>({
+  purpose: { type: String, required: true },
+  floors: { type: Number, required: true },
+  area: { type: Number, required: true },
+  location: { type: String, required: true },
+  materials: { type: String },
+  energySource: { type: String },
+  waterSystem: { type: String },
+  additionalFeatures: { type: String },
+  analysisResult: {
+    score: { type: Number },
+    recommendations: { type: String },
+  },
+  createdAt: { type: Date, default: Date.now },
 });
 
-const UserSchema: Schema = new Schema({
+const UserSchema = new Schema<IUser>({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  buildings: [BuildingSchema]
+  buildings: [BuildingSchema],
 });
 
-export default mongoose.model<IUser>('User', UserSchema);
+const User = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
+
+export default User;

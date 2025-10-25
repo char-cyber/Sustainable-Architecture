@@ -93,17 +93,32 @@ export const CustomizeBuildingPage: React.FC = () => {
     setIsSubmitting(true);
     setSubmitError(null);
     setFinalResult(null);
-    setSavedBuildingId(null);
+      setSavedBuildingId(null);
     try {
-      // Step 1: Get sustainability analysis
-      const analysis = await analyzeSustainability(buildingData);
-      setFinalResult(analysis);
-
-      // Step 2: Save the data to the database
-      const saved = await saveBuildingAnalysis(buildingData);
-      setSavedBuildingId(saved.buildingId);
+      // Step 1: Run the sustainability analysis
+      const result = await analyzeSustainability(buildingData);
+      setAnalysisResult(result);
+  
+      // Step 2: Save to database (assuming userId is stored in localStorage or context)
+      const userId = localStorage.getItem("userId");
+      if (userId) {
+        const saveResponse = await fetch(`http://localhost:5000/api/user/${userId}/buildings`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...buildingData,
+            analysisResult: result,
+          }),
+        });
+  
+        if (!saveResponse.ok) {
+          throw new Error("Failed to save building to database");
+        }
+        console.log("Building saved successfully");
+      }
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'An unknown error occurred.');
+      setError(err instanceof Error ? err.message : "An unknown error occurred.");
+      console.error(err);
     } finally {
       setIsSubmitting(false);
     }
