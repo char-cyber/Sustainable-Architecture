@@ -1,0 +1,1 @@
+//gives option for upload, and text inputs. upload image will be done on this page
