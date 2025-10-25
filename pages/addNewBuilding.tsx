@@ -27,7 +27,7 @@ export const AddNewBuildingPage: React.FC<AddNewBuildingPageProps> = ({ setPage 
   };
 
   const handleTextClick = () => {
-    alert('Text input functionality coming soon!');
+    setPage('textbuilding')
   };
 
   const handleAnalyze = async () => {
