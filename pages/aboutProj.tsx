@@ -33,23 +33,11 @@ export const AboutProjPage: React.FC = () => {
                     </Section>
                     
                     <Section title="How we built it">
-                        We built Sustainable Architect AI using **React** and **TypeScript** for a responsive, modular frontend and integrated the **Gemini API** for AI-driven sustainability analysis of descriptions. **MongoDB** handles user authentication and stores building analysis history. This full-stack setup lets users log in, look up designs and instantly receive actionable sustainability insights powered by AI.
+                        We built Sustainable Architect AI using React and TypeScript for a responsive, modular frontend and integrated the Gemini API for AI-driven sustainability analysis of descriptions. MongoDB handles user authentication and stores building analysis history. This full-stack setup lets users log in, look up designs and instantly receive actionable sustainability insights powered by AI.
                     </Section>
-                    
-                    <Section title="Challenges we ran into">
-                        We faced several challenges throughout development — from resolving GitHub merge conflicts during collaboration to refining feature implementations across the frontend and backend. The biggest hurdle was **prompt engineering**: structuring requests to the Gemini API in a way that consistently produced accurate, insightful sustainability analyses instead of generic responses.
-                    </Section>
-                    
-                    <Section title="Accomplishments that we're proud of">
-                        We’re proud of creating a reliable, full-stack platform that applies AI meaningfully in sustainable architecture. A major accomplishment was developing a custom **grounding gem** for the Gemini API, designed to anchor the model’s responses in accurate, domain-specific sustainability data. This greatly reduced hallucinations and improved the consistency of analyses, ensuring that feedback on materials, energy efficiency, and design recommendations stayed realistic and technically sound. We’re also proud of how seamlessly we integrated this with a clean, React-based UI for an intuitive user experience.
-                    </Section>
-                    
-                    <Section title="What we learned">
-                        We learned how powerful multimodal AI can be when combined with design tools — and how much prompt structure matters in getting useful, repeatable responses. We also deepened our understanding of sustainable design principles, realizing how much early feedback can change architectural outcomes.
-                    </Section>
-                    
+
                     <Section title="What's next for Sustainable Architect AI">
-                        We plan to complete features that didn’t make it into our final build, including **direct user image uploading** that allows users to take photos of real buildings and receive instant, AI-driven sustainability feedback. This will make Sustainable Architect AI more interactive and practical, enabling on-site evaluations and real-time suggestions for improving energy efficiency, material use, and overall sustainability.
+                        We plan to complete features that didn’t make it into our final build, including direct user image uploading that allows users to take photos of real buildings and receive instant, AI-driven sustainability feedback. This will make Sustainable Architect AI more interactive and practical, enabling on-site evaluations and real-time suggestions for improving energy efficiency, material use, and overall sustainability.
                     </Section>
                 </div>
             </div>
