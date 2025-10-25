@@ -5,6 +5,8 @@ import { AddNewBuildingPage } from './pages/addNewBuilding';
 import { ViewMyBuildingsPage } from './pages/viewMyBuildings';
 import { AboutProjPage } from './pages/aboutProj';
 import { LeafIcon } from './components/icons/LeafIcon';
+import { ChatPage } from './pages/ChatPage';
+import { CustomizeBuildingPage } from './pages/CustomizeBuildingPage';
 
 export type Page = 'home' | 'addNewBuilding' | 'viewMyBuildings' | 'aboutProj' | 'aboutAi';
 
@@ -17,8 +19,10 @@ const App: React.FC = () => {
         switch(page) {
             case 'home':
                 return <HomePage setPage={setPage} />;
-            case 'addNewBuilding':
-                return <AddNewBuildingPage />;
+                case 'addNewBuilding':
+                  return <AddNewBuildingPage setPage={setPage} />;
+                case 'textbuilding':
+                  return <CustomizeBuildingPage setPage={setPage} />;
             case 'viewMyBuildings':
                 return <ViewMyBuildingsPage />;
             case 'aboutProj':
