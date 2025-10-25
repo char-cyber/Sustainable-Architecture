@@ -48,6 +48,9 @@ const App: React.FC = () => {
                     </h1>
                 </div>
                 <nav className="flex items-center space-x-2">
+                    <button onClick={() => setPage('HomePage')} className={navButtonClasses}>
+                        Home
+                    </button>
                     <button onClick={() => setPage('logIn')} className={navButtonClasses}>
                         Login
                     </button>
