@@ -1,0 +1,5 @@
+
+{
+  "name": "Sustainable Building Analyzer",
+  "description": "An application that uses the Gemini API to analyze the sustainability of a building idea, providing a score and improvement suggestions."
+}
